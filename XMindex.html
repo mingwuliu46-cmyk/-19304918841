@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>🐼 熊猫叮咚·益智魔方挑战赛</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Nunito:wght@400;700;900&display=swap');
+
+        :root {
+            --gold: #ffd966;
+            --amber: #ffb347;
+            --peach: #ffa559;
+            --dark-brown: #2c1a0c;
+            --ocean: #0d2d42;
+            --ocean-mid: #1a4d6b;
+            --ocean-light: #1e6488;
+            --glass: rgba(255,255,255,0.07);
+            --glass-border: rgba(255,215,102,0.25);
+            --success: #56d07e;
+            --danger: #ff6b6b;
+            --radius-xl: 32px;
+            --radius-pill: 99px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a1f30 0%, #0d2d42 40%, #1a4d6b 70%, #0f3a52 100%);
+        }
+
+        /* ── 星点背景 ── */
+        #stars-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .star {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+            animation: twinkle var(--t, 3s) ease-in-out infinite alternate;
+            opacity: var(--o, 0.4);
+        }
+        @keyframes twinkle {
+            from { opacity: var(--o, 0.2); transform: scale(1); }
+            to   { opacity: calc(var(--o, 0.2) * 2.5); transform: scale(1.3); }
+        }
+
+        /* ── Canvas ── */
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+        canvas { display: block; }
+
+        /* ── 顶部品牌栏 ── */
+        .brand-bar {
+            position: fixed;
+            top: env(safe-area-inset-top, 0);
+            top: max(env(safe-area-inset-top, 0px), 10px);
+            left: 0; right: 0;
+            display: flex;
+            justify-content: center;
+            z-index: 30;
+            pointer-events: none;
+        }
+        .brand-name {
+            background: rgba(10,25,40,0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            padding: 6px 22px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            font-weight: 900;
+            color: var(--gold);
+            letter-spacing: 1px;
+            text-shadow: 0 0 16px rgba(255,217,102,0.5);
+        }
+
+        /* ── 关卡/难度标签 ── */
+        .difficulty-tag {
+            position: fixed;
+            top: 60px;
+            left: 12px;
+            background: rgba(10,25,40,0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-pill);
+            padding: 5px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gold);
+            z-index: 25;
+        }
+
+        /* ── 右上角按钮 ── */
+        .float-menu {
+            position: fixed;
+            top: 60px;
+            right: 12px;
+            z-index: 25;
+            display: flex;
+            gap: 8px;
+        }
+        .icon-btn {
+            background: rgba(10,25,40,0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: transform .15s, background .15s;
+        }
+        .icon-btn:active { transform: scale(0.88); background: rgba(255,179,71,0.25); }
+
+        /* ── 步数显示 ── */
+        .step-display {
+            position: fixed;
+            bottom: 148px;
+            right: 14px;
+            background: rgba(10,25,40,0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-pill);
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #e0f0ff;
+            z-index: 25;
+            transition: color .3s;
+        }
+        .step-display.warn { color: var(--danger); animation: pulse .5s ease-in-out 2; }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+        /* ── 营销面板（底部） ── */
+        .marketing-panel {
+            position: fixed;
+            bottom: 14px;
+            left: 10px;
+            right: 10px;
+            background: rgba(8,20,34,0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 10px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            gap: 8px;
+        }
+        .stats {
+            display: flex;
+            gap: 14px;
+        }
+        .stat {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.65);
+            line-height: 1.3;
+        }
+        .stat-val {
+            display: block;
+            font-weight: 900;
+            color: var(--gold);
+            font-size: 1.05rem;
+        }
+        .btn-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .btn {
+            border: none;
+            border-radius: var(--radius-pill);
+            padding: 6px 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.72rem;
+            transition: transform .12s, filter .12s;
+            font-family: inherit;
+        }
+        .btn:active { transform: scale(0.9); filter: brightness(1.15); }
+        .btn-sign   { background: linear-gradient(135deg, #ff9a44, #fc6076); color: white; }
+        .btn-invite { background: linear-gradient(135deg, var(--gold), var(--amber)); color: var(--dark-brown); }
+        .btn-exchange { background: linear-gradient(135deg, #56d07e, #20a553); color: white; }
+
+        /* ── 底部导航 ── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
+            background: rgba(8,20,34,0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 5px 8px;
+            border-radius: var(--radius-xl);
+            z-index: 28;
+        }
+        .nav-item {
+            text-align: center;
+            flex: 1;
+            padding: 6px 4px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 20px;
+            color: rgba(255,255,255,0.5);
+            transition: color .2s, background .2s;
+            white-space: nowrap;
+        }
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--peach), var(--amber));
+            color: var(--dark-brown);
+        }
+
+        /* ── 内容面板 ── */
+        .panel {
+            position: fixed;
+            top: 108px;
+            bottom: 148px;
+            left: 10px;
+            right: 10px;
+            background: rgba(8,20,34,0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            z-index: 18;
+            overflow-y: auto;
+            padding: 14px;
+            border-radius: var(--radius-xl);
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* 游戏面板不遮挡 canvas，完全透明穿透 */
+        #gamePanel {
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border: none;
+            pointer-events: none;
+            overflow: visible;
+            padding: 0;
+        }
+        #gamePanel .card { display: none; } /* 游戏 tab 下不显示说明卡片 */
+        .panel.active { display: flex; }
+        .panel::-webkit-scrollbar { width: 4px; }
+        .panel::-webkit-scrollbar-track { background: transparent; }
+        .panel::-webkit-scrollbar-thumb { background: rgba(255,217,102,0.3); border-radius: 4px; }
+
+        .card {
+            background: rgba(255,246,232,0.06);
+            border: 1px solid rgba(255,217,102,0.15);
+            border-radius: 24px;
+            padding: 16px;
+            color: #e8d5b5;
+        }
+        .card h3 {
+            color: var(--gold);
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 900;
+        }
+        .card p { font-size: 12.5px; line-height: 1.6; color: rgba(255,255,255,0.7); }
+
+        /* ── 关卡列表 ── */
+        .level-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .level-btn {
+            border: none;
+            border-radius: var(--radius-pill);
+            padding: 6px 0;
+            width: 54px;
+            text-align: center;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: transform .12s;
+            position: relative;
+        }
+        .level-btn:active { transform: scale(0.88); }
+        .level-btn.locked {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.25);
+            cursor: not-allowed;
+        }
+        .level-btn.unlocked {
+            background: linear-gradient(135deg, var(--amber), var(--peach));
+            color: var(--dark-brown);
+            box-shadow: 0 2px 8px rgba(255,165,89,0.3);
+        }
+        .level-btn.cleared {
+            background: linear-gradient(135deg, #56d07e, #20a553);
+            color: white;
+        }
+
+        /* ── 留言/排行 ── */
+        .comment-item, .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255,217,102,0.1);
+            font-size: 12.5px;
+            gap: 8px;
+        }
+        .comment-item:last-child, .ranking-item:last-child { border-bottom: none; }
+        .comment-meta { font-size: 10px; color: rgba(255,255,255,0.35); }
+
+        .rank-medal { font-size: 1.1rem; width: 28px; text-align: center; flex-shrink: 0; }
+        .rank-name { flex: 1; color: #e8d5b5; }
+        .rank-pts { font-weight: 900; color: var(--gold); }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .input-group input,
+        .input-group textarea {
+            flex: 1;
+            min-width: 80px;
+            border-radius: var(--radius-pill);
+            border: 1px solid rgba(255,217,102,0.3);
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.07);
+            font-size: 12px;
+            color: #e8d5b5;
+            font-family: inherit;
+            outline: none;
+        }
+        .input-group textarea {
+            border-radius: 16px;
+            resize: none;
+            width: 100%;
+        }
+        .input-group input::placeholder,
+        .input-group textarea::placeholder { color: rgba(255,255,255,0.3); }
+        .input-group input:focus,
+        .input-group textarea:focus { border-color: var(--gold); }
+
+        /* ── 弹窗 ── */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal.show { display: flex; }
+        .modal-card {
+            background: linear-gradient(160deg, #1a3a52, #0d2d42);
+            border: 1px solid rgba(255,217,102,0.3);
+            border-radius: 36px;
+            max-width: 340px;
+            width: 100%;
+            padding: 24px 20px 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+            animation: popIn .25s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0.7); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+        .modal-card h3 { color: var(--gold); font-size: 16px; margin-bottom: 12px; }
+        .modal-card p  { color: rgba(255,255,255,0.75); font-size: 13px; line-height: 1.6; margin-bottom: 8px; }
+        .modal-card strong { color: var(--gold); }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+        .modal-btn {
+            border: none;
+            border-radius: var(--radius-pill);
+            padding: 9px 22px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform .12s;
+        }
+        .modal-btn:active { transform: scale(0.9); }
+        .modal-btn.primary { background: linear-gradient(135deg, var(--amber), var(--peach)); color: var(--dark-brown); }
+        .modal-btn.secondary { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
+
+        /* ── 通关爆炸效果 ── */
+        #confetti-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 999;
+            display: none;
+        }
+
+        /* ── 连续签到条 ── */
+        .streak-bar {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .streak-day {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(255,217,102,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            font-weight: 700;
+        }
+        .streak-day.done { background: linear-gradient(135deg, var(--gold), var(--amber)); color: var(--dark-brown); border-color: transparent; }
+        .streak-day.today { box-shadow: 0 0 0 2px var(--amber); }
+
+        /* ── 进度条 ── */
+        .progress-bar-wrap {
+            height: 5px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), var(--peach));
+            border-radius: 3px;
+            transition: width .4s ease;
+        }
+
+        /* ── 生日/许愿 ── */
+        .birthday-badge {
+            background: rgba(255,217,102,0.1);
+            border: 1px solid rgba(255,217,102,0.25);
+            border-radius: 16px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #e8d5b5;
+            margin: 8px 0;
+        }
+
+        /* ── 响应式 ── */
+        @media (max-width: 400px) {
+            .marketing-panel { padding: 8px 10px; gap: 6px; }
+            .btn { padding: 5px 10px; font-size: 0.68rem; }
+            .stat-val { font-size: 0.9rem; }
+            .nav-item { font-size: 10px; }
+            .bottom-nav { bottom: 75px; }
+            .panel { bottom: 143px; }
+        }
+
+        /* ── Toast 通知 ── */
+        #toast {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            background: rgba(10,25,40,0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-pill);
+            padding: 9px 20px;
+            color: var(--gold);
+            font-size: 13px;
+            font-weight: 700;
+            z-index: 2000;
+            pointer-events: none;
+            transition: transform .35s cubic-bezier(0.175,0.885,0.32,1.275), opacity .35s;
+            opacity: 0;
+            white-space: nowrap;
+        }
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* ── 防沉迷遮罩 ── */
+        #antiAddictionOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(4,10,20,0.97);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 30px;
+        }
+        #antiAddictionOverlay.show { display: flex; }
+        .anti-icon { font-size: 5rem; margin-bottom: 16px; animation: breathe 2.5s ease-in-out infinite; }
+        @keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+        .anti-title { font-size: 22px; font-weight: 900; color: var(--gold); margin-bottom: 10px; }
+        .anti-sub { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7; max-width: 300px; }
+        .anti-countdown {
+            margin: 24px auto;
+            background: rgba(255,217,102,0.08);
+            border: 1px solid rgba(255,217,102,0.3);
+            border-radius: 24px;
+            padding: 16px 32px;
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: var(--gold);
+            letter-spacing: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .anti-tip { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 6px; }
+
+        /* ── 游玩时间浮标 ── */
+        #playTimeBadge {
+            position: fixed;
+            bottom: 148px;
+            left: 14px;
+            background: rgba(10,25,40,0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-pill);
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.6);
+            z-index: 25;
+            transition: color .3s;
+        }
+        #playTimeBadge.warn { color: var(--danger); }
+
+        /* ── 家庭组 ── */
+        .family-member {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255,217,102,0.1);
+        }
+        .family-member:last-child { border-bottom: none; }
+        .member-avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--amber), var(--peach));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        .member-info { flex: 1; }
+        .member-name { font-weight: 700; color: #e8d5b5; font-size: 13px; }
+        .member-pts  { font-size: 11px; color: rgba(255,255,255,0.45); }
+        .member-badge { font-size: 11px; background: rgba(255,217,102,0.15); border-radius: 30px; padding: 2px 8px; color: var(--gold); }
+    </style>
+</head>
+<body>
+
+<!-- 防沉迷遮罩 -->
+<div id="antiAddictionOverlay">
+    <div class="anti-icon">🐼</div>
+    <div class="anti-title">休息一下吧！</div>
+    <div class="anti-sub">你已连续游玩 <strong style="color:var(--gold)">1.5 小时</strong>，<br>为了保护你的眼睛和健康，<br>游戏将暂停，<strong style="color:var(--gold)">8 小时</strong>后恢复。</div>
+    <div class="anti-countdown" id="antiCountdown">08:00:00</div>
+    <div class="anti-tip">🌟 休息是为了更好的出发，去喝杯水、活动一下身体吧～</div>
+</div>
+
+<!-- 星空背景 -->
+<div id="stars-bg"></div>
+
+<!-- 三维画布 -->
+<div id="canvas-container"></div>
+
+<!-- 品牌 -->
+<div class="brand-bar"><div class="brand-name">🐼 熊猫叮咚 · 益智魔方挑战赛</div></div>
+
+<!-- 关卡信息 -->
+<div class="difficulty-tag">🧩 第 <span id="levelNum">1</span>/<span id="totalNum">66</span> 关 · 限 <span id="targetSteps">0</span> 步</div>
+
+<!-- 右上角工具栏 -->
+<div class="float-menu">
+    <div class="icon-btn" id="resetBtn" title="重置关卡">🔄</div>
+    <div class="icon-btn" id="undoBtn" title="撤销一步">↩️</div>
+    <div class="icon-btn" id="helpBtn" title="帮助">❓</div>
+</div>
+
+<!-- 步数 -->
+<div class="step-display" id="stepCountDisplay">🚶 0 / 0</div>
+<!-- 游玩时间徽章 -->
+<div id="playTimeBadge">⏳ 0:00</div>
+
+<!-- 营销栏 -->
+<div class="marketing-panel">
+    <div class="stats">
+        <div class="stat">🍬 甜蜜券<span id="sweetPoints" class="stat-val">0</span></div>
+        <div class="stat">🎫 折扣券<span id="couponCount" class="stat-val">0</span></div>
+        <div class="stat">⏱️ 今日<span id="todayPlayCount" class="stat-val">0/3</span></div>
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-sign"     id="dailySignBtn">📅 签到</button>
+        <button class="btn btn-invite"   id="inviteBtn">👨‍👩‍👧 家庭</button>
+        <button class="btn btn-exchange" id="exchangeBtn">🎁 兑换</button>
+    </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="bottom-nav">
+    <div class="nav-item active" data-panel="game">🎮 游戏</div>
+    <div class="nav-item" data-panel="level">🗂️ 关卡</div>
+    <div class="nav-item" data-panel="rank">🏆 周榜</div>
+    <div class="nav-item" data-panel="comment">💬 留言</div>
+    <div class="nav-item" data-panel="wish">🎂 许愿</div>
+</div>
+
+<!-- 面板：游戏（透明穿透，不遮 canvas） -->
+<div id="gamePanel" class="panel active"></div>
+
+<!-- 面板：关卡 -->
+<div id="levelPanel" class="panel">
+    <div class="card">
+        <h3>🗺️ 关卡列表（逐级解锁）</h3>
+        <p id="progressText" style="margin-bottom:6px; font-size:12px;">0 / 66 关已通关</p>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+        <div id="levelListContainer" class="level-selector" style="margin-top:12px;"></div>
+        <p style="margin-top:10px; font-size:11px;">✅ 绿色 = 已通关 &nbsp;🟠 橙色 = 可挑战 &nbsp;⚫ 暗色 = 未解锁</p>
+    </div>
+</div>
+
+<!-- 面板：周榜 -->
+<div id="rankPanel" class="panel">
+    <div class="card">
+        <h3>🏆 本周达人榜</h3>
+        <p style="font-size:11px; margin-bottom:10px;">每周一自动重置 · 榜单依据：本周获得甜蜜券总数</p>
+        <div id="rankList"></div>
+    </div>
+</div>
+
+<!-- 面板：留言 -->
+<div id="commentPanel" class="panel">
+    <div class="card">
+        <h3>💬 玩家留言墙</h3>
+        <div id="commentsList" style="max-height:180px; overflow-y:auto;"></div>
+        <div class="input-group">
+            <input type="text" id="commentName" placeholder="昵称" maxlength="12" style="max-width:90px;">
+            <input type="text" id="commentText" placeholder="说点什么…" maxlength="80">
+            <button id="postCommentBtn" class="btn btn-invite" style="flex-shrink:0;">发布</button>
+        </div>
+    </div>
+</div>
+
+<!-- 面板：许愿 -->
+<div id="wishPanel" class="panel">
+    <div class="card">
+        <h3>🎂 生日许愿 & 悄悄话</h3>
+        <div class="input-group">
+            <input type="date" id="birthdayInput">
+            <button id="saveBirthdayBtn" class="btn btn-sign" style="flex-shrink:0;">保存</button>
+        </div>
+        <div class="birthday-badge" id="birthdayMsg">未设置生日 — 生日当天可领 30 甜蜜券 🎁</div>
+        <div class="input-group">
+            <textarea id="secretWish" rows="2" placeholder="写下你的秘密愿望或悄悄话…"></textarea>
+        </div>
+        <div class="input-group">
+            <button id="saveWishBtn" class="btn btn-invite" style="width:100%;">💖 保存悄悄话</button>
+        </div>
+        <div id="displayWish" style="margin-top:8px; font-style:italic; color:rgba(255,255,255,0.5); font-size:12px;"></div>
+    </div>
+</div>
+
+<!-- 通用弹窗 -->
+<div id="commonModal" class="modal">
+    <div class="modal-card">
+        <div id="modalContent"></div>
+        <div class="modal-btns">
+            <button class="modal-btn primary" id="closeModalBtn">好的</button>
+        </div>
+    </div>
+</div>
+
+<!-- 通关彩花 -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ════════════════════════════════════════════════
+   ① 星空背景
+════════════════════════════════════════════════ */
+(function buildStars() {
+    const bg = document.getElementById('stars-bg');
+    for (let i = 0; i < 90; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        const sz = Math.random() * 2 + 0.5;
+        s.style.cssText = `
+            width:${sz}px; height:${sz}px;
+            left:${Math.random()*100}%;
+            top:${Math.random()*100}%;
+            --t:${(Math.random()*3+1.5).toFixed(1)}s;
+            --o:${(Math.random()*0.4+0.15).toFixed(2)};
+            animation-delay:${(Math.random()*4).toFixed(1)}s;
+        `;
+        bg.appendChild(s);
+    }
+})();
+
+/* ════════════════════════════════════════════════
+   ② Three.js 初始化
+════════════════════════════════════════════════ */
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = null; // 透明，让 CSS 渐变显示
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+camera.position.set(5, 4, 6);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.rotateSpeed = 0.85;
+controls.enableZoom = true;
+controls.enablePan = false;
+controls.target.set(0, 0, 0);
+controls.minDistance = 4;
+controls.maxDistance = 14;
+
+// 灯光
+scene.add(new THREE.AmbientLight(0x405070, 1.0));
+const dir = new THREE.DirectionalLight(0xffffff, 1.4);
+dir.position.set(3, 6, 4);
+dir.castShadow = true;
+scene.add(dir);
+const back = new THREE.PointLight(0xbbaaee, 0.5);
+back.position.set(-3, 1, -4);
+scene.add(back);
+const fill = new THREE.PointLight(0x88ccff, 0.35);
+fill.position.set(1, 3, 3);
+scene.add(fill);
+
+/* ════════════════════════════════════════════════
+   ③ 魔方构建（带棱边轮廓）
+════════════════════════════════════════════════ */
+const FACE_COLORS = { U:0xffd966, D:0xfafafa, F:0x44cc77, B:0x55aaff, L:0xff9944, R:0xee5555 };
+const INNER = 0x111111;
+const GAP = 1.04;
+const CUBE_SIZE = 0.94;
+let cubies = [];
+
+function buildCube() {
+    cubies.forEach(c => { scene.remove(c.mesh); if (c.edge) scene.remove(c.edge); });
+    cubies = [];
+    for (let x = -1; x <= 1; x++) {
+        for (let y = -1; y <= 1; y++) {
+            for (let z = -1; z <= 1; z++) {
+                const geo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                const mats = [
+                    new THREE.MeshStandardMaterial({ color: x === 1 ? FACE_COLORS.R : INNER, roughness: 0.4, metalness: 0.1 }),
+                    new THREE.MeshStandardMaterial({ color: x ===-1 ? FACE_COLORS.L : INNER, roughness: 0.4, metalness: 0.1 }),
+                    new THREE.MeshStandardMaterial({ color: y === 1 ? FACE_COLORS.U : INNER, roughness: 0.4, metalness: 0.1 }),
+                    new THREE.MeshStandardMaterial({ color: y ===-1 ? FACE_COLORS.D : INNER, roughness: 0.4, metalness: 0.1 }),
+                    new THREE.MeshStandardMaterial({ color: z === 1 ? FACE_COLORS.F : INNER, roughness: 0.4, metalness: 0.1 }),
+                    new THREE.MeshStandardMaterial({ color: z ===-1 ? FACE_COLORS.B : INNER, roughness: 0.4, metalness: 0.1 }),
+                ];
+                const mesh = new THREE.Mesh(geo, mats);
+                mesh.position.set(x * GAP, y * GAP, z * GAP);
+                mesh.castShadow = true;
+                scene.add(mesh);
+
+                // 棱边线框
+                const edgeGeo = new THREE.EdgesGeometry(geo);
+                const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55 });
+                const edge = new THREE.LineSegments(edgeGeo, edgeMat);
+                edge.position.copy(mesh.position);
+                scene.add(edge);
+
+                cubies.push({ mesh, edge, pos: { x, y, z } });
+            }
+        }
+    }
+}
+buildCube();
+
+/* ════════════════════════════════════════════════
+   ④ 旋转动画队列（含撤销）
+════════════════════════════════════════════════ */
+let isAnimating = false;
+let animQueue = [];
+let moveHistory = []; // 每步: {axis, layer, angle}
+
+function applyRotation(axis, layer, angle, onDone) {
+    isAnimating = true;
+    const affected = cubies.filter(c => c.pos[axis] === layer);
+    const group = new THREE.Group();
+    affected.forEach(c => {
+        scene.remove(c.mesh);
+        if (c.edge) scene.remove(c.edge);
+        group.add(c.mesh);
+        if (c.edge) group.add(c.edge);
+    });
+    scene.add(group);
+
+    const start = performance.now();
+    const duration = 140;
+
+    function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+        const cur = ease * angle;
+        if (axis === 'x') group.rotation.x = cur;
+        if (axis === 'y') group.rotation.y = cur;
+        if (axis === 'z') group.rotation.z = cur;
+
+        if (t < 1) {
+            requestAnimationFrame(tick);
+        } else {
+            affected.forEach(c => {
+                const wp = c.mesh.getWorldPosition(new THREE.Vector3());
+                const wq = c.mesh.getWorldQuaternion(new THREE.Quaternion());
+                c.mesh.position.copy(wp);
+                c.mesh.quaternion.copy(wq);
+                scene.attach(c.mesh);
+                c.pos = {
+                    x: Math.round(wp.x / GAP),
+                    y: Math.round(wp.y / GAP),
+                    z: Math.round(wp.z / GAP)
+                };
+                if (c.edge) {
+                    const wpe = c.edge.getWorldPosition(new THREE.Vector3());
+                    const wqe = c.edge.getWorldQuaternion(new THREE.Quaternion());
+                    c.edge.position.copy(wpe);
+                    c.edge.quaternion.copy(wqe);
+                    scene.attach(c.edge);
+                }
+            });
+            scene.remove(group);
+            isAnimating = false;
+            if (animQueue.length) {
+                const next = animQueue.shift();
+                applyRotation(next.axis, next.layer, next.angle, next.onDone);
+            } else {
+                if (onDone) onDone();
+                if (typeof window.onMoveFinished === 'function') window.onMoveFinished();
+            }
+        }
+    }
+    requestAnimationFrame(tick);
+}
+
+function queueRot(axis, layer, dir, recordHistory = true) {
+    const angle = dir === 'cw' ? Math.PI / 2 : -Math.PI / 2;
+    if (recordHistory) moveHistory.push({ axis, layer, angle });
+    if (isAnimating) animQueue.push({ axis, layer, angle });
+    else applyRotation(axis, layer, angle);
+}
+
+function undoLastMove() {
+    if (moveHistory.length === 0) { showToast('没有可撤销的步骤'); return; }
+    if (isAnimating || animQueue.length) { showToast('动画进行中…'); return; }
+    const last = moveHistory.pop();
+    currentStep = Math.max(0, currentStep - 1);
+    updateStepDisplay();
+    applyRotation(last.axis, last.layer, -last.angle, null);
+}
+
+/* ════════════════════════════════════════════════
+   ⑤ 洗牌 & 重置 & 检测
+════════════════════════════════════════════════ */
+const ALL_MOVES = [
+    { axis:'y', layer:1,  dir:'cw'  }, { axis:'y', layer:1,  dir:'ccw' },
+    { axis:'y', layer:-1, dir:'cw'  }, { axis:'y', layer:-1, dir:'ccw' },
+    { axis:'z', layer:1,  dir:'cw'  }, { axis:'z', layer:1,  dir:'ccw' },
+    { axis:'z', layer:-1, dir:'cw'  }, { axis:'z', layer:-1, dir:'ccw' },
+    { axis:'x', layer:1,  dir:'cw'  }, { axis:'x', layer:1,  dir:'ccw' },
+    { axis:'x', layer:-1, dir:'cw'  }, { axis:'x', layer:-1, dir:'ccw' },
+];
+
+function shuffleCube(steps) {
+    let last = null;
+    for (let i = 0; i < steps; i++) {
+        let mv;
+        do { mv = ALL_MOVES[Math.floor(Math.random() * ALL_MOVES.length)]; }
+        while (last && mv.axis === last.axis && mv.layer === last.layer);
+        last = mv;
+        const angle = mv.dir === 'cw' ? Math.PI/2 : -Math.PI/2;
+        animQueue.push({ axis: mv.axis, layer: mv.layer, angle });
+    }
+    if (!isAnimating && animQueue.length) {
+        const next = animQueue.shift();
+        applyRotation(next.axis, next.layer, next.angle);
+    }
+}
+
+function resetCube() {
+    animQueue = [];
+    moveHistory = [];
+    buildCube();
+}
+
+/**
+ * 正确判断魔方是否复原：
+ * 对每个面（x=1, x=-1, y=1, y=-1, z=1, z=-1），
+ * 检查对应层所有 cubie 的该面颜色是否一致。
+ */
+function isSolved() {
+    // 检查是否还有动画
+    if (isAnimating || animQueue.length) return false;
+
+    const faceChecks = [
+        { axis:'x', layer: 1, matIdx: 0 },
+        { axis:'x', layer:-1, matIdx: 1 },
+        { axis:'y', layer: 1, matIdx: 2 },
+        { axis:'y', layer:-1, matIdx: 3 },
+        { axis:'z', layer: 1, matIdx: 4 },
+        { axis:'z', layer:-1, matIdx: 5 },
+    ];
+
+    for (const fc of faceChecks) {
+        const face = cubies.filter(c => c.pos[fc.axis] === fc.layer);
+        if (face.length === 0) continue;
+        // 获取该面法线方向在世界坐标中的颜色
+        // 通过材质颜色判断，但旋转后材质跟随 mesh
+        // 实际上颜色在旋转后不会变，只有位置变化——此处用 mesh quaternion 还原面朝向
+        const colors = face.map(c => {
+            const m = c.mesh.material[fc.matIdx];
+            return m.color.getHex();
+        });
+        const first = colors[0];
+        if (!colors.every(col => col === first)) return false;
+        // 且颜色不能是 INNER
+        if (first === INNER) return false;
+    }
+    return true;
+}
+
+/* ════════════════════════════════════════════════
+   ⑥ 66 关配置
+════════════════════════════════════════════════ */
+const TOTAL_LEVELS = 66;
+const levels = [];
+for (let i = 1; i <= TOTAL_LEVELS; i++) {
+    const stepLimit    = Math.max(20, Math.round(70 - (i - 1) * 50 / (TOTAL_LEVELS - 1)));
+    const scrambleSteps = Math.min(60, Math.round(15 + (i - 1) * 45 / (TOTAL_LEVELS - 1)));
+    levels.push({ id: i, stepLimit, scrambleSteps, points: 10 });
+}
+
+/* ════════════════════════════════════════════════
+   ⑦ 游戏状态 & 存档
+════════════════════════════════════════════════ */
+const SAVE_KEY = 'panda_master_v2';
+let currentLevel    = 1;
+let currentStep     = 0;
+let levelCleared    = false;
+let totalPoints     = 0;
+let coupon          = 0;
+let dailyPlayTimes  = 0;
+let lastSignDate    = '';
+let lastPlayDate    = '';
+let signStreak      = 0;       // 连续签到天数
+let maxUnlockedLevel = 1;
+let levelRewardClaimed = {};
+let weeklyRank = {};
+let comments   = [];
+let userBirthday = '';
+let secretWish   = '';
+let playerNick   = '魔方勇士';
+
+function getWeekKey() {
+    const now = new Date(), y = now.getFullYear();
+    const d1 = new Date(y, 0, 1);
+    const w = Math.ceil(((now - d1) / 86400000 + d1.getDay() + 1) / 7);
+    return `${y}-W${w}`;
+}
+
+function loadAll() {
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (raw) {
+            const d = JSON.parse(raw);
+            totalPoints        = d.totalPoints     || 0;
+            coupon             = d.coupon          || 0;
+            dailyPlayTimes     = d.dailyPlayTimes  || 0;
+            lastSignDate       = d.lastSignDate    || '';
+            lastPlayDate       = d.lastPlayDate    || '';
+            signStreak         = d.signStreak      || 0;
+            maxUnlockedLevel   = d.maxUnlockedLevel || 1;
+            levelRewardClaimed = d.levelRewardClaimed || {};
+            currentLevel       = d.currentLevel    || 1;
+            weeklyRank         = d.weeklyRank      || {};
+            comments           = d.comments        || [];
+            userBirthday       = d.userBirthday    || '';
+            secretWish         = d.secretWish      || '';
+            playerNick         = d.playerNick      || '魔方勇士';
+        }
+    } catch(e) {}
+    const today = new Date().toISOString().slice(0, 10);
+    if (lastPlayDate !== today) { dailyPlayTimes = 0; lastPlayDate = today; }
+    if (currentLevel > maxUnlockedLevel) currentLevel = maxUnlockedLevel;
+}
+
+function saveAll() {
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+            totalPoints, coupon, dailyPlayTimes, lastSignDate, lastPlayDate,
+            signStreak, maxUnlockedLevel, levelRewardClaimed, currentLevel,
+            weeklyRank, comments, userBirthday, secretWish, playerNick
+        }));
+    } catch(e) {}
+}
+
+/* ════════════════════════════════════════════════
+   ⑧ UI 更新
+════════════════════════════════════════════════ */
+function updateUI() {
+    document.getElementById('sweetPoints').innerText    = totalPoints;
+    document.getElementById('couponCount').innerText    = coupon;
+    document.getElementById('todayPlayCount').innerText = `${dailyPlayTimes}/3`;
+    document.getElementById('levelNum').innerText       = currentLevel;
+    document.getElementById('totalNum').innerText       = TOTAL_LEVELS;
+    document.getElementById('targetSteps').innerText    = levels[currentLevel - 1].stepLimit;
+    updateStepDisplay();
+    updateProgressCard();
+}
+
+function updateStepDisplay() {
+    const limit = levels[currentLevel - 1].stepLimit;
+    const el    = document.getElementById('stepCountDisplay');
+    el.textContent = `🚶 ${currentStep} / ${limit}`;
+    el.classList.toggle('warn', currentStep >= limit * 0.85);
+}
+
+function updateProgressCard() {
+    const cleared = Object.keys(levelRewardClaimed).length;
+    document.getElementById('progressText').textContent = `${cleared} / ${TOTAL_LEVELS} 关已通关`;
+    document.getElementById('progressFill').style.width = `${(cleared / TOTAL_LEVELS * 100).toFixed(1)}%`;
+}
+
+/* ════════════════════════════════════════════════
+   ⑨ Toast & Modal
+════════════════════════════════════════════════ */
+let _toastTimer = null;
+function showToast(msg, duration = 2200) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function showModal(contentHTML, extraBtns = []) {
+    const el = document.getElementById('commonModal');
+    document.getElementById('modalContent').innerHTML = contentHTML;
+    // 清除之前的额外按钮（保留关闭按钮）
+    const modalBtns = el.querySelector('.modal-btns');
+    // 重建按钮区
+    modalBtns.innerHTML = '';
+    extraBtns.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = 'modal-btn primary';
+        btn.textContent = b.label;
+        btn.onclick = b.action;
+        modalBtns.appendChild(btn);
+    });
+    const closeBtn = document.createElement('button');
+    closeBtn.className = `modal-btn ${extraBtns.length ? 'secondary' : 'primary'}`;
+    closeBtn.id = 'closeModalBtn';
+    closeBtn.textContent = '关闭';
+    closeBtn.onclick = () => el.classList.remove('show');
+    modalBtns.appendChild(closeBtn);
+    el.classList.add('show');
+}
+
+/* ════════════════════════════════════════════════
+   ⑩ 彩花庆祝
+════════════════════════════════════════════════ */
+function launchConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    const pieces = Array.from({ length: 80 }, () => ({
+        x: Math.random() * canvas.width,
+        y: -20 - Math.random() * 60,
+        w: 6 + Math.random() * 10,
+        h: 4 + Math.random() * 6,
+        r: Math.random() * Math.PI * 2,
+        vx: (Math.random() - 0.5) * 3,
+        vy: 2 + Math.random() * 4,
+        vr: (Math.random() - 0.5) * 0.15,
+        color: ['#ffd966','#ff9944','#ee5555','#44cc77','#55aaff','#dd66ff'][Math.floor(Math.random() * 6)],
+    }));
+    let frame = 0;
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.r);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+            p.x += p.vx; p.y += p.vy; p.r += p.vr; p.vy += 0.07;
+        });
+        frame++;
+        if (frame < 100) requestAnimationFrame(draw);
+        else { ctx.clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'none'; }
+    }
+    draw();
+}
+
+/* ════════════════════════════════════════════════
+   ⑪ 关卡逻辑
+════════════════════════════════════════════════ */
+function unlockNextLevel() {
+    if (currentLevel === maxUnlockedLevel && currentLevel < TOTAL_LEVELS) {
+        maxUnlockedLevel++;
+        saveAll();
+        renderLevelList();
+    }
+}
+
+async function onLevelComplete() {
+    if (levelCleared) return;
+    levelCleared = true;
+    launchConfetti();
+
+    const lvl = levels[currentLevel - 1];
+    let reward = 0;
+    if (!levelRewardClaimed[currentLevel]) {
+        reward = lvl.points;
+        totalPoints += reward;
+        levelRewardClaimed[currentLevel] = true;
+        updateWeeklyRank(reward);
+        dailyPlayTimes++;
+        saveAll();
+        updateUI();
+        unlockNextLevel();
+        showToast(`🎉 通关！+${reward} 甜蜜券`);
+        await sleep(1800);
+        if (currentLevel < maxUnlockedLevel) switchToLevel(currentLevel + 1);
+    } else {
+        dailyPlayTimes++;
+        saveAll();
+        updateUI();
+        showToast(`✨ 再次通关！继续加油`);
+        await sleep(1500);
+        switchToLevel(currentLevel);
+    }
+}
+
+async function switchToLevel(id) {
+    if (id > maxUnlockedLevel) { showModal('<h3>🔒 关卡未解锁</h3><p>请先通关前置关卡！</p>'); return; }
+    currentLevel  = id;
+    levelCleared  = false;
+    currentStep   = 0;
+    moveHistory   = [];
+    animQueue     = [];
+    resetCube();
+    updateUI();
+    await sleep(120);
+    shuffleCube(levels[id - 1].scrambleSteps);
+    window.onMoveFinished = () => {
+        if (levelCleared) return;
+        currentStep++;
+        updateStepDisplay();
+        if (isSolved()) {
+            onLevelComplete();
+        } else if (currentStep >= levels[currentLevel - 1].stepLimit) {
+            showToast(`⚠️ 步数超限，自动重置！`);
+            setTimeout(() => {
+                currentStep = 0; moveHistory = []; animQueue = [];
+                resetCube();
+                setTimeout(() => shuffleCube(levels[currentLevel - 1].scrambleSteps), 60);
+                updateStepDisplay();
+            }, 600);
+        }
+    };
+    saveAll();
+    renderLevelList();
+}
+
+function resetCurrentLevel() {
+    if (levelCleared) return;
+    currentStep = 0; moveHistory = []; animQueue = [];
+    resetCube();
+    setTimeout(() => shuffleCube(levels[currentLevel - 1].scrambleSteps), 60);
+    updateStepDisplay();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ════════════════════════════════════════════════
+   ⑫ 关卡列表渲染
+════════════════════════════════════════════════ */
+function renderLevelList() {
+    const wrap = document.getElementById('levelListContainer');
+    if (!wrap) return;
+    let html = '';
+    for (let i = 1; i <= TOTAL_LEVELS; i++) {
+        const unlocked = i <= maxUnlockedLevel;
+        const cleared  = !!levelRewardClaimed[i];
+        let cls = 'level-btn';
+        if (!unlocked)       cls += ' locked';
+        else if (cleared)    cls += ' cleared';
+        else                 cls += ' unlocked';
+        html += `<button class="${cls}" data-lv="${i}">${i}${cleared ? '✓' : ''}</button>`;
+    }
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.level-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lv = +btn.dataset.lv;
+            if (lv <= maxUnlockedLevel) switchToLevel(lv);
+            else showModal('<h3>🔒 未解锁</h3><p>先通关前置关卡哦！</p>');
+        });
+    });
+}
+
+/* ════════════════════════════════════════════════
+   ⑬ 排行榜
+════════════════════════════════════════════════ */
+function updateWeeklyRank(gain) {
+    const wk = getWeekKey();
+    if (!weeklyRank.key || weeklyRank.key !== wk) weeklyRank = { key: wk, list: [] };
+    const existing = weeklyRank.list.find(r => r.name === playerNick);
+    if (existing) existing.pts += gain;
+    else weeklyRank.list.push({ name: playerNick, pts: gain });
+    weeklyRank.list.sort((a, b) => b.pts - a.pts);
+    if (weeklyRank.list.length > 50) weeklyRank.list = weeklyRank.list.slice(0, 50);
+    saveAll();
+}
+
+function renderRanking() {
+    const el = document.getElementById('rankList');
+    if (!el) return;
+    const wk   = getWeekKey();
+    const list  = (weeklyRank.key === wk && weeklyRank.list) ? weeklyRank.list : [];
+    if (!list.length) { el.innerHTML = '<p style="text-align:center;opacity:.5;">本周暂无记录，去通关积累甜蜜券吧！</p>'; return; }
+    const medals = ['🥇', '🥈', '🥉'];
+    el.innerHTML = list.map((r, i) => `
+        <div class="ranking-item">
+            <span class="rank-medal">${medals[i] || i + 1}</span>
+            <span class="rank-name">${escHtml(r.name)}</span>
+            <span class="rank-pts">${r.pts} 券</span>
+        </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════
+   ⑭ 留言
+════════════════════════════════════════════════ */
+function renderComments() {
+    const el = document.getElementById('commentsList');
+    if (!el) return;
+    if (!comments.length) { el.innerHTML = '<p style="text-align:center;opacity:.5;">还没有留言，来第一条吧～</p>'; return; }
+    el.innerHTML = comments.slice().reverse().map(c => `
+        <div class="comment-item">
+            <div>
+                <strong style="color:var(--gold)">${escHtml(c.name)}</strong>
+                <span class="comment-meta"> · ${c.time}</span>
+                <div style="margin-top:3px; color:rgba(255,255,255,.75);">${escHtml(c.text)}</div>
+            </div>
+        </div>`).join('');
+}
+
+function addComment(name, text) {
+    if (!name.trim()) name = '匿名棋友';
+    if (!text.trim()) return;
+    comments.unshift({ name: name.trim(), text: text.trim(), time: new Date().toLocaleString('zh-CN') });
+    if (comments.length > 100) comments.pop();
+    saveAll(); renderComments();
+}
+
+/* ════════════════════════════════════════════════
+   ⑮ 生日 & 许愿
+════════════════════════════════════════════════ */
+function updateBirthdayUI() {
+    const el     = document.getElementById('birthdayMsg');
+    const wishEl = document.getElementById('displayWish');
+    const today  = new Date().toISOString().slice(0, 10);
+    if (userBirthday) {
+        const isBD = userBirthday.slice(5) === today.slice(5);
+        el.innerHTML = isBD
+            ? '🎂 <strong>今天是你的生日！</strong>许愿更灵验～ 已送 30 甜蜜券 🎁'
+            : `🗓️ 已设置生日：${userBirthday}。生日当天可领 30 甜蜜券！`;
+    } else {
+        el.innerHTML = '未设置生日 — 生日当天可领 30 甜蜜券 🎁';
+    }
+    wishEl.innerHTML = secretWish ? `💖 悄悄话："${escHtml(secretWish)}"` : '还没有悄悄话～';
+}
+
+function saveBirthday(date) {
+    userBirthday = date; saveAll(); updateBirthdayUI();
+    const today = new Date().toISOString().slice(0, 10);
+    if (date.slice(5) === today.slice(5) && !localStorage.getItem('bd_gift_v2')) {
+        totalPoints += 30;
+        localStorage.setItem('bd_gift_v2', '1');
+        updateUI(); saveAll();
+        showModal('<h3>🎂 生日快乐！</h3><p>熊猫叮咚送你 <strong>30 甜蜜券</strong>！愿每天都甜甜的～</p>');
+    }
+}
+
+/* ════════════════════════════════════════════════
+   ⑯ 签到（含连续签到奖励）
+════════════════════════════════════════════════ */
+function dailySign() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (lastSignDate === today) { showToast('今天已签到过啦～'); return; }
+
+    // 判断是否连续
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    signStreak = (lastSignDate === yesterday) ? signStreak + 1 : 1;
+    lastSignDate = today;
+
+    let bonus = 5 + Math.min(signStreak - 1, 6) * 2; // 最多 +12 连续奖励
+    totalPoints += bonus;
+    updateUI(); saveAll();
+
+    showModal(`<h3>📅 签到成功！</h3>
+        <p>今日 +${bonus} 甜蜜券</p>
+        <p>已连续签到 <strong>${signStreak}</strong> 天</p>
+        ${renderStreakBar()}`);
+}
+
+function renderStreakBar() {
+    const days = Math.min(signStreak, 7);
+    const dots = Array.from({ length: 7 }, (_, i) => {
+        const done = i < days;
+        const isToday = i === days - 1;
+        return `<div class="streak-day ${done ? 'done' : ''} ${isToday ? 'today' : ''}">${i+1}</div>`;
+    }).join('');
+    return `<div class="streak-bar">${dots}</div>`;
+}
+
+/* ════════════════════════════════════════════════
+   ⑰ 家庭组 & 邀请系统
+════════════════════════════════════════════════ */
+let myInviteCode = '';
+let familyCode   = '';   // 家庭房间码（6位）
+let familyMembers = [];  // [{name, pts, avatar, joined}]
+
+function initInvite() {
+    myInviteCode  = localStorage.getItem('panda_invite_v2') ||
+        'PD' + Math.random().toString(36).substr(2, 7).toUpperCase();
+    localStorage.setItem('panda_invite_v2', myInviteCode);
+
+    // 家庭房间码：固定6位，存 localStorage
+    familyCode = localStorage.getItem('panda_family_code') ||
+        Math.random().toString(36).substr(2, 6).toUpperCase();
+    localStorage.setItem('panda_family_code', familyCode);
+
+    // 加载家庭成员列表
+    try {
+        familyMembers = JSON.parse(localStorage.getItem('panda_family_members') || '[]');
+    } catch(e) { familyMembers = []; }
+
+    // 自己始终在列表中
+    const selfEntry = familyMembers.find(m => m.name === playerNick);
+    if (!selfEntry) {
+        familyMembers.unshift({ name: playerNick, pts: totalPoints, avatar: '🐼', joined: Date.now() });
+        saveFamilyMembers();
+    } else {
+        selfEntry.pts = totalPoints;
+        saveFamilyMembers();
+    }
+}
+
+function saveFamilyMembers() {
+    try { localStorage.setItem('panda_family_members', JSON.stringify(familyMembers)); } catch(e) {}
+}
+
+function showInviteModal() {
+    const shareUrl = `${location.href.split('?')[0]}?join=${familyCode}`;
+    // 刷新自己的积分
+    const selfEntry = familyMembers.find(m => m.name === playerNick);
+    if (selfEntry) selfEntry.pts = totalPoints;
+    familyMembers.sort((a, b) => b.pts - a.pts);
+    saveFamilyMembers();
+
+    const memberRows = familyMembers.map((m, i) => {
+        const medals = ['🥇','🥈','🥉'];
+        return `<div class="family-member">
+            <div class="member-avatar">${m.avatar || '🎮'}</div>
+            <div class="member-info">
+                <div class="member-name">${escHtml(m.name)} ${m.name===playerNick?'<span class="member-badge">我</span>':''}</div>
+                <div class="member-pts">甜蜜券 ${m.pts}</div>
+            </div>
+            <span style="font-size:1.2rem">${medals[i]||''}</span>
+        </div>`;
+    }).join('');
+
+    showModal(`
+        <h3>👨‍👩‍👧 家庭挑战圈</h3>
+        <p style="margin-bottom:4px;">家庭房间码：<strong style="font-size:1.2em;letter-spacing:3px">${familyCode}</strong></p>
+        <p style="font-size:11px;margin-bottom:12px;">把房间码分享给家人，一起比拼谁的甜蜜券最多！</p>
+        <div style="background:rgba(255,217,102,0.08);border:1px solid rgba(255,217,102,0.2);border-radius:16px;padding:10px 12px;margin-bottom:12px;">
+            <p style="font-size:11px;word-break:break-all;color:rgba(255,255,255,0.5);margin-bottom:6px;">🔗 ${shareUrl}</p>
+        </div>
+        <div style="text-align:left;margin-bottom:10px;">${memberRows || '<p style="opacity:.5;text-align:center">还没有成员，快邀请家人吧！</p>'}</div>
+        <p style="font-size:12px;margin-bottom:8px;">📥 输入家人的房间码加入他们的圈子：</p>
+        <div style="display:flex;gap:8px;">
+            <input id="joinFamilyInput" type="text" maxlength="6" placeholder="输入6位房间码"
+                style="flex:1;border-radius:40px;border:1px solid rgba(255,217,102,.3);
+                       padding:8px 14px;background:rgba(255,255,255,.07);color:#e8d5b5;
+                       font-size:13px;font-family:inherit;outline:none;letter-spacing:2px;text-transform:uppercase;">
+        </div>`,
+        [
+            { label: '📋 复制房间码', action: copyFamilyCode },
+            { label: '➕ 加入圈子',   action: joinFamilyRoom },
+        ]
+    );
+}
+
+function copyFamilyCode() {
+    navigator.clipboard?.writeText(familyCode).then(() => showToast('房间码已复制！'));
+}
+
+function joinFamilyRoom() {
+    const code = (document.getElementById('joinFamilyInput')?.value||'').trim().toUpperCase();
+    if (!code || code.length !== 6) { showToast('请输入完整的6位房间码'); return; }
+    if (code === familyCode) { showToast('这是你自己的房间码哦'); return; }
+    // 模拟加入：在本地添加一个虚拟成员（实际多设备场景需后端，这里做本地演示）
+    const alreadyIn = familyMembers.find(m => m.name === '来自 ' + code);
+    if (alreadyIn) { showToast('已在该家庭圈中'); return; }
+    familyMembers.push({ name: '来自 ' + code, pts: 0, avatar: '👤', joined: Date.now() });
+    saveFamilyMembers();
+    showToast('已申请加入，等待对方确认～');
+    document.getElementById('commonModal').classList.remove('show');
+}
+
+/* ════════════════════════════════════════════════
+   ⑱ 防沉迷系统（1.5h 游玩 → 暂停 8h）
+════════════════════════════════════════════════ */
+const PLAY_LIMIT_MS  = 90 * 60 * 1000;   // 1.5 小时
+const REST_LIMIT_MS  = 8  * 60 * 60 * 1000; // 8 小时
+let sessionStartTime = Date.now();
+let totalPlayedMs    = 0;
+let gamePaused       = false;
+let antiTimer        = null;
+let restEndTime      = 0;
+
+function initAntiAddiction() {
+    // 恢复已累计游玩时间（跨刷新）
+    try {
+        const saved = JSON.parse(localStorage.getItem('anti_addiction_v2') || '{}');
+        const now   = Date.now();
+        if (saved.restEndTime && now < saved.restEndTime) {
+            // 还在休息期
+            restEndTime  = saved.restEndTime;
+            gamePaused   = true;
+            showAntiOverlay();
+            startRestCountdown();
+            return;
+        }
+        totalPlayedMs = saved.totalPlayedMs || 0;
+        sessionStartTime = now;
+    } catch(e) {}
+    startPlayTimer();
+}
+
+function saveAntiState() {
+    try {
+        localStorage.setItem('anti_addiction_v2', JSON.stringify({
+            totalPlayedMs, restEndTime
+        }));
+    } catch(e) {}
+}
+
+function startPlayTimer() {
+    sessionStartTime = Date.now();
+    clearInterval(antiTimer);
+    antiTimer = setInterval(() => {
+        if (gamePaused) return;
+        const elapsed = Date.now() - sessionStartTime;
+        totalPlayedMs = (totalPlayedMs || 0) + 1000; // 每秒+1s
+        sessionStartTime = Date.now();
+
+        // 更新游玩时间徽章
+        const mins  = Math.floor(totalPlayedMs / 60000);
+        const secs  = Math.floor((totalPlayedMs % 60000) / 1000);
+        const badge = document.getElementById('playTimeBadge');
+        badge.textContent = `⏳ ${mins}:${String(secs).padStart(2,'0')}`;
+
+        // 接近上限提醒（剩 5 分钟）
+        if (totalPlayedMs >= PLAY_LIMIT_MS - 5*60*1000 && totalPlayedMs < PLAY_LIMIT_MS) {
+            badge.classList.add('warn');
+            if (totalPlayedMs % (60*1000) < 1100) showToast('⚠️ 还有 5 分钟触发防沉迷休息');
+        }
+
+        // 触发防沉迷
+        if (totalPlayedMs >= PLAY_LIMIT_MS) {
+            triggerAntiAddiction();
+        }
+
+        saveAntiState();
+    }, 1000);
+}
+
+function triggerAntiAddiction() {
+    gamePaused  = true;
+    restEndTime = Date.now() + REST_LIMIT_MS;
+    totalPlayedMs = 0;
+    saveAntiState();
+    showAntiOverlay();
+    startRestCountdown();
+}
+
+function showAntiOverlay() {
+    document.getElementById('antiAddictionOverlay').classList.add('show');
+}
+
+function startRestCountdown() {
+    clearInterval(antiTimer);
+    antiTimer = setInterval(() => {
+        const remaining = restEndTime - Date.now();
+        if (remaining <= 0) {
+            // 休息结束
+            gamePaused = false;
+            restEndTime = 0;
+            totalPlayedMs = 0;
+            saveAntiState();
+            document.getElementById('antiAddictionOverlay').classList.remove('show');
+            document.getElementById('antiCountdown').textContent = '08:00:00';
+            document.getElementById('playTimeBadge').textContent = '⏳ 0:00';
+            document.getElementById('playTimeBadge').classList.remove('warn');
+            showToast('🎉 休息结束，继续挑战吧！');
+            startPlayTimer();
+            clearInterval(antiTimer);
+            return;
+        }
+        const h  = Math.floor(remaining / 3600000);
+        const m  = Math.floor((remaining % 3600000) / 60000);
+        const s  = Math.floor((remaining % 60000) / 1000);
+        document.getElementById('antiCountdown').textContent =
+            `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }, 1000);
+}
+
+function showExchangeModal() {
+    showModal(`
+        <h3>🎁 甜蜜兑换</h3>
+        <p>当前甜蜜券：<strong>${totalPoints}</strong></p>
+        <p>🍰 <strong>888 券</strong> → 熊猫叮咚小蛋糕核销码</p>
+        <p>🎫 <strong>8 券</strong>  → 八折复购券（门店通用）</p>`,
+        [
+            { label: '兑蛋糕 888券', action: exchangeCake   },
+            { label: '兑折扣 8券',   action: exchangeCoupon },
+        ]
+    );
+}
+
+function exchangeCake() {
+    if (totalPoints >= 888) {
+        totalPoints -= 888; updateUI(); saveAll();
+        const code = 'CAKE' + Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+        showModal(`<h3>🎂 兑换成功！</h3><p>核销码：<strong>${code}</strong></p><p>到店出示即可领取熊猫叮咚小蛋糕一份！</p>`);
+    } else {
+        showToast(`甜蜜券不足，还差 ${888 - totalPoints} 券`);
+    }
+}
+
+function exchangeCoupon() {
+    if (totalPoints >= 8) {
+        totalPoints -= 8; coupon++; updateUI(); saveAll();
+        showToast('🎫 已获得一张八折复购券！');
+        document.getElementById('commonModal').classList.remove('show');
+    } else {
+        showToast('甜蜜券不足（需要 8 券）');
+    }
+}
+
+/* ════════════════════════════════════════════════
+   ⑱ 面板切换
+════════════════════════════════════════════════ */
+function switchPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id + 'Panel')?.classList.add('active');
+    document.querySelector(`.nav-item[data-panel="${id}"]`)?.classList.add('active');
+    if (id === 'rank')    renderRanking();
+    if (id === 'comment') renderComments();
+    if (id === 'wish')    updateBirthdayUI();
+    if (id === 'level')   renderLevelList();
+}
+
+/* ════════════════════════════════════════════════
+   ⑲ 点击魔方旋转（Raycaster）
+════════════════════════════════════════════════ */
+const raycaster = new THREE.Raycaster();
+const mouse     = new THREE.Vector2();
+
+renderer.domElement.addEventListener('click', (e) => {
+    if (isAnimating || levelCleared || gamePaused) return;
+    if (currentPanel() !== 'game') return; // 只在游戏面板响应
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+    mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(cubies.map(c => c.mesh));
+    if (!hits.length) return;
+
+    const hit    = hits[0];
+    const normal = hit.face.normal.clone().applyQuaternion(hit.object.quaternion);
+    const ax = Math.abs(normal.x), ay = Math.abs(normal.y), az = Math.abs(normal.z);
+    let axis, layer, dir;
+
+    if (ax >= ay && ax >= az) {
+        axis  = 'x'; layer = hit.object.position.x > 0 ? 1 : -1;
+        dir   = normal.x > 0 ? 'cw' : 'ccw';
+    } else if (ay >= ax && ay >= az) {
+        axis  = 'y'; layer = hit.object.position.y > 0 ? 1 : -1;
+        dir   = normal.y > 0 ? 'cw' : 'ccw';
+    } else {
+        axis  = 'z'; layer = hit.object.position.z > 0 ? 1 : -1;
+        dir   = normal.z > 0 ? 'cw' : 'ccw';
+    }
+    queueRot(axis, layer, dir);
+});
+
+function currentPanel() {
+    const active = document.querySelector('.nav-item.active');
+    return active ? active.dataset.panel : 'game';
+}
+
+/* ════════════════════════════════════════════════
+   ⑳ 事件绑定
+════════════════════════════════════════════════ */
+document.getElementById('resetBtn').addEventListener('click', resetCurrentLevel);
+document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+document.getElementById('helpBtn').addEventListener('click', () => showModal(`
+    <h3>❓ 游戏说明</h3>
+    <p>🖱️ <strong>拖拽</strong>空白区域旋转视角</p>
+    <p>👆 <strong>点击</strong>魔方面旋转该层</p>
+    <p>↩️ 右上角可<strong>撤销</strong>最后一步</p>
+    <p>🔄 重置按钮可重新开始本关</p>
+    <p>🎯 步数内六面同色即通关！</p>`));
+
+document.getElementById('dailySignBtn').addEventListener('click', dailySign);
+document.getElementById('inviteBtn').addEventListener('click', showInviteModal);
+document.getElementById('exchangeBtn').addEventListener('click', showExchangeModal);
+
+document.getElementById('postCommentBtn').addEventListener('click', () => {
+    addComment(
+        document.getElementById('commentName').value,
+        document.getElementById('commentText').value
+    );
+    document.getElementById('commentText').value = '';
+});
+
+document.getElementById('saveBirthdayBtn').addEventListener('click', () => {
+    const d = document.getElementById('birthdayInput').value;
+    if (d) saveBirthday(d); else showToast('请先选择日期');
+});
+
+document.getElementById('saveWishBtn').addEventListener('click', () => {
+    const w = document.getElementById('secretWish').value.trim();
+    if (w) { secretWish = w; saveAll(); updateBirthdayUI(); showToast('💖 愿望已保存！'); }
+    else showToast('请先写下愿望');
+});
+
+document.querySelectorAll('.nav-item').forEach(btn =>
+    btn.addEventListener('click', () => switchPanel(btn.dataset.panel))
+);
+
+// 点击遮罩关闭弹窗
+document.getElementById('commonModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+});
+
+/* ════════════════════════════════════════════════
+   ㉑ 工具函数
+════════════════════════════════════════════════ */
+function escHtml(str) {
+    return String(str).replace(/[&<>"']/g, m =>
+        ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'": '&#39;' })[m]);
+}
+
+/* ════════════════════════════════════════════════
+   ㉒ 初始化昵称
+════════════════════════════════════════════════ */
+function initNick() {
+    const stored = localStorage.getItem('player_nick_v2');
+    if (stored) { playerNick = stored; return; }
+    // 简洁的昵称弹窗
+    showModal(`
+        <h3>🐼 欢迎来到益智魔方挑战赛！</h3>
+        <p>请输入你的昵称（用于排行榜）</p>
+        <div style="margin-top:12px;">
+            <input id="nickInput" type="text" maxlength="12" value="魔方勇士"
+                style="width:100%; border-radius:40px; border:1px solid rgba(255,217,102,.3);
+                       padding:9px 14px; background:rgba(255,255,255,.07); color:#e8d5b5;
+                       font-size:13px; font-family:inherit; outline:none; text-align:center;">
+        </div>`,
+        [{ label: '开始游戏 🎮', action: confirmNick }]
+    );
+}
+
+function confirmNick() {
+    const v = (document.getElementById('nickInput')?.value || '').trim() || '魔方勇士';
+    playerNick = v;
+    localStorage.setItem('player_nick_v2', v);
+    saveAll();
+    document.getElementById('commonModal').classList.remove('show');
+    initAntiAddiction();
+    switchToLevel(currentLevel);
+}
+
+/* ════════════════════════════════════════════════
+   ㉓ 窗口缩放
+════════════════════════════════════════════════ */
+function onResize() {
+    const w = container.clientWidth, h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ════════════════════════════════════════════════
+   ㉔ 渲染循环
+════════════════════════════════════════════════ */
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+animate();
+
+/* ════════════════════════════════════════════════
+   ㉕ 启动！
+════════════════════════════════════════════════ */
+loadAll();
+initInvite();
+updateUI();
+renderRanking();
+renderComments();
+updateBirthdayUI();
+renderLevelList();
+initAntiAddiction();
+
+if (!localStorage.getItem('player_nick_v2')) {
+    initNick();
+} else {
+    switchToLevel(currentLevel);
+}
+
+// 首次设置昵称后自动开始
+const _origClose = document.getElementById('commonModal').onclick;
+</script>
+</body>
+</html>
